@@ -2,7 +2,7 @@
 // const db = new sqlite3.Database('./database.db');
 
 const data = require('./jobs.json')
-
+require('dotenv').config();
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 console.log(data);
@@ -18,46 +18,46 @@ const db = new sqlite3.Database(dbPath, (err) => {
     }
 });
 
-db.serialize(() => {
-    db.run(`
-      CREATE TABLE IF NOT EXISTS jobs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT,
-        description TEXT,
-        type TEXT,
-        salary TEXT,
-        location TEXT,
-        company_name TEXT,
-        company_description TEXT,
-        contact_email TEXT,
-        contact_phone TEXT
-      )
-    `);
+// db.serialize(() => {
+//     db.run(`
+//       CREATE TABLE IF NOT EXISTS jobs (
+//         id INTEGER PRIMARY KEY AUTOINCREMENT,
+//         title TEXT,
+//         description TEXT,
+//         type TEXT,
+//         salary TEXT,
+//         location TEXT,
+//         company_name TEXT,
+//         company_description TEXT,
+//         contact_email TEXT,
+//         contact_phone TEXT
+//       )
+//     `);
   
-    db.serialize(() => {
-      data.jobs.forEach(job => {
-        db.run(`
-          INSERT INTO jobs (
-            title, description, type, salary, location, company_name, company_description, contact_email, contact_phone
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
-          job.title,
-          job.description,
-          job.type,
-          job.salary,
-          job.location,
-          job.company.name,
-          job.company.description,
-          job.company.contactEmail,
-          job.company.contactPhone
-        ], (err) => {
-          if (err) {
-            console.error(err);
-          }
-        });
-      });
-    });
-  });
+//     db.serialize(() => {
+//       data.jobs.forEach(job => {
+//         db.run(`
+//           INSERT INTO jobs (
+//             title, description, type, salary, location, company_name, company_description, contact_email, contact_phone
+//           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+//         `, [
+//           job.title,
+//           job.description,
+//           job.type,
+//           job.salary,
+//           job.location,
+//           job.company.name,
+//           job.company.description,
+//           job.company.contactEmail,
+//           job.company.contactPhone
+//         ], (err) => {
+//           if (err) {
+//             console.error(err);
+//           }
+//         });
+//       });
+//     });
+//   });
 
 // db.serialize(() => {
 //     db.run(`DROP TABLE IF EXISTS jobs`);
@@ -163,7 +163,7 @@ app.delete('/api/jobs/:id', (req, res) => {
 });
 
 // Start the server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
