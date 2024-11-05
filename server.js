@@ -1,183 +1,103 @@
-// const sqlite3 = require('sqlite3').verbose();
-// const db = new sqlite3.Database('./database.db');
+// server.js
 require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
-
-const data = require('./jobs.json');
-// console.log(data);
-
-const sqlite3 = require('sql.js');
-
-
-//? Create or connect to the database file in the server directory
-// const dbPath = path.join(__dirname, 'jobsDatabase.sqlite'); // Database file path
-// const db = new sqlite3.Database(dbPath, (err) => {
-//     if (err) {
-//         console.error('Error connecting to database:', err);
-//     } else {
-//         console.log('Connected to the SQLite database at', dbPath);
-//     }
-// });
-
-const dbPath = path.join(__dirname, 'jobsDatabase.sqlite');
-const databaseData = fs.readFileSync(dbPath);
-const db = new sqlite3.Database(databaseData, (err) => {
-    if (err) {
-        console.error(err, "error connecting to the DB")
-    } else {
-        console.log('Connected to the SQLite database at', dbPath);
-    }
-});
-
-
-
-// db.serialize(() => {
-//     db.run(`
-//       CREATE TABLE IF NOT EXISTS jobs (
-//         id INTEGER PRIMARY KEY AUTOINCREMENT,
-//         title TEXT,
-//         description TEXT,
-//         type TEXT,
-//         salary TEXT,
-//         location TEXT,
-//         company_name TEXT,
-//         company_description TEXT,
-//         contact_email TEXT,
-//         contact_phone TEXT
-//       )
-//     `);
-  
-//     db.serialize(() => {
-//       data.jobs.forEach(job => {
-//         db.run(`
-//           INSERT INTO jobs (
-//             title, description, type, salary, location, company_name, company_description, contact_email, contact_phone
-//           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-//         `, [
-//           job.title,
-//           job.description,
-//           job.type,
-//           job.salary,
-//           job.location,
-//           job.company.name,
-//           job.company.description,
-//           job.company.contactEmail,
-//           job.company.contactPhone
-//         ], (err) => {
-//           if (err) {
-//             console.error(err);
-//           }
-//         });
-//       });
-//     });
-//   });
-
-// db.serialize(() => {
-//     db.run(`DROP TABLE IF EXISTS jobs`);
-//   });
-
-
-
 const express = require('express');
-const cors = require('cors')
+const cors = require('cors');
+const initializeDatabase = require('./database');
 const app = express();
-app.use(cors({
-    origin: 'http://localhost:5173', // Allow only this origin
-}));
+
+app.use(cors({ origin: 'http://localhost:5173' })); // CORS setup
 app.use(express.json());
 
-app.get('/jobs', (req, res) => {
-    db.all('SELECT * FROM jobs', (err, rows) => {
-        if (err) {
-            res.status(500).send({ error: err.message });
-        } else {
-            res.json(rows);
-        }
-    });
-});
+let db;
 
-app.get('/api/jobs/:id', (req, res) => {
-    const id = req.params.id;
-    db.get('SELECT * FROM jobs WHERE id = ?', [id], (err, row) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-        } else if (!row) {
+// Initialize the database and configure the server routes once ready
+initializeDatabase().then(database => {
+    db = database;
+
+    // Create the jobs table if it doesn't exist
+    db.run(`
+        CREATE TABLE IF NOT EXISTS jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            description TEXT,
+            type TEXT,
+            salary TEXT,
+            location TEXT,
+            company_name TEXT,
+            company_description TEXT,
+            contact_email TEXT,
+            contact_phone TEXT
+        )
+    `);
+
+    // Define routes
+
+    // Get all jobs
+    app.get('/jobs', (req, res) => {
+        const stmt = db.prepare('SELECT * FROM jobs');
+        const jobs = [];
+        while (stmt.step()) {
+            jobs.push(stmt.getAsObject());
+        }
+        stmt.free();
+        res.json(jobs);
+    });
+
+    // Get job by ID
+    app.get('/api/jobs/:id', (req, res) => {
+        const id = req.params.id;
+        const stmt = db.prepare('SELECT * FROM jobs WHERE id = ?');
+        stmt.bind([id]);
+        if (stmt.step()) {
+            res.json(stmt.getAsObject());
+        } else {
             res.status(404).json({ error: "Job not found" });
-        } else {
-            res.json(row);
         }
-    });
-});
-
-
-app.post('/api/jobs', (req, res) => {
-    const { title, description, type, salary, location, company_name, company_description, contact_email, contact_phone } = req.body;
-
-    // Insert or find the company in the companies table
-    db.get(`SELECT id FROM companies WHERE name = ?`, [company_name], (err, row) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-
-        if (row) {
-            // Company exists, use its id
-            insertJob(row.id);
-        } else {
-            // Insert new company and use the new id
-            db.run(`INSERT INTO companies (name, description, contact_email, contact_phone) VALUES (?, ?, ?, ?)`,
-                [company_name, company_description, contact_email, contact_phone],
-                function(err) {
-                    if (err) {
-                        return res.status(500).json({ error: err.message });
-                    }
-                    insertJob(this.lastID);
-                });
-        }
+        stmt.free();
     });
 
-    // Function to insert the job
-    function insertJob(company_id) {
-        db.run(`INSERT INTO jobs (title, description, type, salary, location, company_id) VALUES (?, ?, ?, ?, ?, ?)`,
-            [title, description, type, salary, location, company_id],
-            function(err) {
-                if (err) {
-                    return res.status(500).json({ error: err.message });
-                }
-                res.status(201).json({ id: this.lastID });
-            });
-    }
-});
-
-
-// PUT update a job
-app.put('/api/jobs/:id', (req, res) => {
-    const { title, description, type, salary, location, company_name, company_description, contact_email, contact_phone } = req.body;
-    const id = req.params.id;
-    db.run(`UPDATE jobs SET title = ?, description = ?, type = ?, salary = ?, location = ?, company_name = ?, company_description = ?, contact_email = ?, contact_phone = ? WHERE id = ?`,
-        [title, description, type, salary, location, company_name, company_description, contact_email, contact_phone, id],
-        function (err) {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-            res.json({ updated: this.changes });
-        }
-    );
-});
-
-// DELETE a job
-app.delete('/api/jobs/:id', (req, res) => {
-    const id = req.params.id;
-    db.run(`DELETE FROM jobs WHERE id = ?`, id, function (err) {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        res.json({ deleted: this.changes });
+    // Add a new job
+    app.post('/api/jobs', (req, res) => {
+        const { title, description, type, salary, location, company_name, company_description, contact_email, contact_phone } = req.body;
+        const stmt = db.prepare(`
+            INSERT INTO jobs (title, description, type, salary, location, company_name, company_description, contact_email, contact_phone)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        stmt.bind([title, description, type, salary, location, company_name, company_description, contact_email, contact_phone]);
+        stmt.step();
+        res.status(201).json({ message: "Job created successfully" });
+        stmt.free();
     });
-});
 
-// Start the server
-const PORT = process.env.PORT;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    // Update a job
+    app.put('/api/jobs/:id', (req, res) => {
+        const { title, description, type, salary, location, company_name, company_description, contact_email, contact_phone } = req.body;
+        const id = req.params.id;
+        const stmt = db.prepare(`
+            UPDATE jobs SET title = ?, description = ?, type = ?, salary = ?, location = ?, company_name = ?, company_description = ?, contact_email = ?, contact_phone = ?
+            WHERE id = ?
+        `);
+        stmt.bind([title, description, type, salary, location, company_name, company_description, contact_email, contact_phone, id]);
+        stmt.step();
+        res.json({ message: "Job updated successfully" });
+        stmt.free();
+    });
+
+    // Delete a job
+    app.delete('/api/jobs/:id', (req, res) => {
+        const id = req.params.id;
+        const stmt = db.prepare(`DELETE FROM jobs WHERE id = ?`);
+        stmt.bind([id]);
+        stmt.step();
+        res.json({ message: "Job deleted successfully" });
+        stmt.free();
+    });
+
+    // Start the server
+    const PORT = process.env.PORT;
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+    });
+}).catch(error => {
+    console.error("Failed to initialize the database:", error);
 });
