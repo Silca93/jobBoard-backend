@@ -1,22 +1,36 @@
 // const sqlite3 = require('sqlite3').verbose();
 // const db = new sqlite3.Database('./database.db');
-
-const data = require('./jobs.json')
 require('dotenv').config();
-const sqlite3 = require('sqlite3').verbose();
+const fs = require('fs');
 const path = require('path');
-console.log(data);
+
+const data = require('./jobs.json');
+// console.log(data);
+
+const sqlite3 = require('sql.js');
 
 
-// Create or connect to the database file in the server directory
-const dbPath = path.join(__dirname, 'jobsDatabase.sqlite'); // Database file path
-const db = new sqlite3.Database(dbPath, (err) => {
+//? Create or connect to the database file in the server directory
+// const dbPath = path.join(__dirname, 'jobsDatabase.sqlite'); // Database file path
+// const db = new sqlite3.Database(dbPath, (err) => {
+//     if (err) {
+//         console.error('Error connecting to database:', err);
+//     } else {
+//         console.log('Connected to the SQLite database at', dbPath);
+//     }
+// });
+
+const dbPath = path.join(__dirname, 'jobsDatabase.sqlite');
+const databaseData = fs.readFileSync(dbPath);
+const db = new sqlite3.Database(databaseData, (err) => {
     if (err) {
-        console.error('Error connecting to database:', err);
+        console.error(err, "error connecting to the DB")
     } else {
         console.log('Connected to the SQLite database at', dbPath);
     }
 });
+
+
 
 // db.serialize(() => {
 //     db.run(`
