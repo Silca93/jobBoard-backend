@@ -11,18 +11,15 @@ app.use(express.json());
 
 
 const corsOptions = {
-    origin:'https://jobboard-frontend-h57b.onrender.com'  // Production frontend URL
-    //  process.env.ENV === 'production' 
-    //   ?
-    //   :
-    //    'http://localhost:5173',                          // Development frontend URL
-    // methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    // allowedHeaders: ['Content-Type', 'Authorization'],
-  };
-  
+    origin: process.env.ENV === 'production' 
+      ? 'https://jobboard-frontend-h57b.onrender.com'  // Production frontend URL
+      : 'http://localhost:5173',                          // Development frontend URL
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    };
+
   // Use the CORS middleware
-  app.use(cors(corsOptions));
-  
+app.use(cors(corsOptions));
+
 
 
 
