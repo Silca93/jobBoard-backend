@@ -5,8 +5,26 @@ const cors = require('cors');
 const initializeDatabase = require('./database');
 const app = express();
 
-app.use(cors({ origin: 'http://localhost:5173' })); // CORS setup
+// app.use(cors({ origin: 'http://localhost:5173' })); 
+// CORS setup
 app.use(express.json());
+
+
+const corsOptions = {
+    origin: process.env.ENV === 'production' 
+      ? 'https://jobboard-frontend-h57b.onrender.com/'  // Production frontend URL
+      : 'http://localhost:5173',                          // Development frontend URL
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  };
+  
+  // Use the CORS middleware
+  app.use(cors(corsOptions));
+  
+
+
+
+
 
 let db;
 
