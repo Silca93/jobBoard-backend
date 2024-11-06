@@ -11,7 +11,7 @@ app.use(express.json());
 
 
 const corsOptions = {
-    origin:'https://jobboard-frontend-h57b.onrender.com/'  // Production frontend URL
+    origin:'https://jobboard-frontend-h57b.onrender.com'  // Production frontend URL
     //  process.env.ENV === 'production' 
     //   ?
     //   :
